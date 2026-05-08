@@ -339,6 +339,9 @@ export class BambuImplementation extends PrinterImplementation {
 
       const data = printer.data;
 
+      const ams_2_pro = this.parseAms2Pro(data);
+      const ai_detection = this.parseAiDetection(data);
+
       return {
         status: data.gcode_state || "UNKNOWN",
         connected: true,
@@ -361,6 +364,8 @@ export class BambuImplementation extends PrinterImplementation {
           totalLayers: data.total_layer_num || 0,
         },
         ams: data.ams || null,
+        ams_2_pro,
+        ai_detection,
         model: data.model || "Unknown",
         serial,
         raw: data,
