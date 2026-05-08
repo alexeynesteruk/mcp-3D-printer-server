@@ -724,7 +724,7 @@ Uploads a `.3mf` file to a Bambu printer via FTP and initiates the print job via
 <details>
 <summary>Click to expand Extended Bambu Status Fields</summary>
 
-#### Extended Bambu Status Fields
+### Extended Bambu Status Fields
 
 For printers that report them (P2S and newer firmware on P1S / X1 / H2D),
 `getStatus` includes two additional blocks:
