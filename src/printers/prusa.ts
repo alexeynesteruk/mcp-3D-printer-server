@@ -1,5 +1,5 @@
 import { isAxiosError, type AxiosRequestConfig, type AxiosResponse } from "axios";
-import { PrinterImplementation } from "../types.js";
+import { PrinterImplementation, PrinterFileEntry, PrinterFilesResult } from "../types.js";
 import fs from "fs";
 import FormData from "form-data";
 
@@ -7,6 +7,58 @@ type RequestCandidate = {
   route: string;
   data?: unknown;
 };
+
+// Inline recursive walk for OctoPrint-shaped payloads (same logic as octoprint.ts
+// but kept here to avoid a circular import between adapter modules).
+function walkOctoEntries(items: any[]): PrinterFileEntry[] {
+  const result: PrinterFileEntry[] = [];
+  for (const item of items) {
+    if (!item || typeof item !== "object") continue;
+    const entry: PrinterFileEntry = { name: item.name };
+    if (item.path !== undefined) entry.path = item.path;
+    if (typeof item.size === "number") entry.size = item.size;
+    if (typeof item.date === "number") entry.date = item.date;
+    entry.type = item.type === "folder" ? "folder" : "file";
+    entry.origin = "local";
+    result.push(entry);
+    if (Array.isArray(item.children) && item.children.length > 0) {
+      result.push(...walkOctoEntries(item.children));
+    }
+  }
+  return result;
+}
+
+export function normalizeFiles(raw: any): PrinterFileEntry[] {
+  try {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return [];
+
+    // Prusa v1 shape: { children: [{name, type, size, m_timestamp}] }
+    if (Array.isArray(raw.children)) {
+      const entries: PrinterFileEntry[] = [];
+      for (const item of raw.children) {
+        if (!item || typeof item !== "object") continue;
+        const entry: PrinterFileEntry = { name: item.name };
+        if (typeof item.size === "number") entry.size = item.size;
+        if (typeof item.m_timestamp === "number") entry.date = item.m_timestamp;
+        // Prusa v1 uses uppercase type strings: "FILE" | "FOLDER"
+        if (typeof item.type === "string") {
+          entry.type = item.type.toLowerCase() === "folder" ? "folder" : "file";
+        }
+        entries.push(entry);
+      }
+      return entries;
+    }
+
+    // Legacy / PrusaLink OctoPrint-shaped: { files: [...] }
+    if (Array.isArray(raw.files)) {
+      return walkOctoEntries(raw.files);
+    }
+
+    return [];
+  } catch {
+    return [];
+  }
+}
 
 export class PrusaImplementation extends PrinterImplementation {
   private buildAuthHeaders(apiKey: string): Record<string, string> {
@@ -93,13 +145,15 @@ export class PrusaImplementation extends PrinterImplementation {
     return response.data;
   }
 
-  async getFiles(host: string, port: string, apiKey: string) {
+  async getFiles(host: string, port: string, apiKey: string): Promise<PrinterFilesResult> {
     const response = await this.getWithFallback(host, port, apiKey, [
       "/api/v1/storage",
       "/api/files",
       "/api/files/local",
     ]);
-    return response.data;
+    const raw = response.data;
+    const files = normalizeFiles(raw);
+    return { files, total: files.length, truncated: false, raw };
   }
 
   async getFile(host: string, port: string, apiKey: string, filename: string) {

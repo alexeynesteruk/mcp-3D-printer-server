@@ -1,4 +1,4 @@
-import { PrinterImplementation } from "../types.js";
+import { PrinterImplementation, PrinterFileEntry, PrinterFilesResult } from "../types.js";
 import { createHash } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -63,6 +63,53 @@ interface AiDetectionStatus {
   nozzle_clumping?: AiDetectionCategory;
   purge_chute_jam?: AiDetectionCategory;
   start_check?: AiDetectionCategory;
+}
+
+// Pure normalizer exported for testing.
+// Accepts the shape produced by BambuImplementation.getFiles:
+//   { files: string[], directories: { [dir]: string[] } }
+// When directories is present, uses it (more structured). Falls back to files.
+export function normalizeFiles(raw: any): PrinterFileEntry[] {
+  try {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return [];
+
+    // Primary path: iterate over directories object
+    if (raw.directories && typeof raw.directories === "object" && !Array.isArray(raw.directories)) {
+      const entries: PrinterFileEntry[] = [];
+      for (const [dir, names] of Object.entries(raw.directories)) {
+        if (!Array.isArray(names)) continue;
+        for (const name of names) {
+          if (typeof name !== "string") continue;
+          entries.push({
+            name,
+            path: `${dir}/${name}`,
+            origin: dir,
+            type: "file",
+          });
+        }
+      }
+      return entries;
+    }
+
+    // Fallback: flat files string array
+    if (Array.isArray(raw.files)) {
+      const entries: PrinterFileEntry[] = [];
+      for (const p of raw.files) {
+        if (typeof p !== "string") continue;
+        const segments = p.split("/");
+        const name = segments[segments.length - 1] || p;
+        const origin = segments.length > 1 ? segments[0] : undefined;
+        const entry: PrinterFileEntry = { name, path: p, type: "file" };
+        if (origin !== undefined) entry.origin = origin;
+        entries.push(entry);
+      }
+      return entries;
+    }
+
+    return [];
+  } catch {
+    return [];
+  }
 }
 
 class BambuClientStore {
@@ -503,7 +550,7 @@ export class BambuImplementation extends PrinterImplementation {
     };
   }
 
-  async getFiles(host: string, port: string, apiKey: string) {
+  async getFiles(host: string, port: string, apiKey: string): Promise<PrinterFilesResult> {
     const [serial, token] = this.extractBambuCredentials(apiKey);
     const printer = new BambuPrinter(host, serial, token);
     const directories = ["cache", "timelapse", "logs"];
@@ -519,14 +566,13 @@ export class BambuImplementation extends PrinterImplementation {
       }
     });
 
-    const files = Object.entries(filesByDirectory).flatMap(([directory, names]) =>
+    const flatFiles = Object.entries(filesByDirectory).flatMap(([directory, names]) =>
       names.map((name) => `${directory}/${name}`)
     );
 
-    return {
-      files,
-      directories: filesByDirectory,
-    };
+    const rawShape = { files: flatFiles, directories: filesByDirectory };
+    const files = normalizeFiles(rawShape);
+    return { files, total: files.length, truncated: false, raw: rawShape };
   }
 
   async getFile(host: string, port: string, apiKey: string, filename: string) {
