@@ -109,3 +109,51 @@ test("parseAms2Pro surfaces drying state per slot when present", async () => {
   assert.equal(slot1.drying_active, undefined);
   assert.equal(slot1.drying_temp_c, undefined);
 });
+
+test("parseAiDetection returns null when no xcam data present", async () => {
+  const { BambuImplementation } = await importBambu();
+  const impl = new BambuImplementation(null);
+  assert.equal(impl.parseAiDetectionForTests({}), null);
+  assert.equal(impl.parseAiDetectionForTests({ xcam: null }), null);
+  assert.equal(impl.parseAiDetectionForTests({ xcam: {} }), null);
+});
+
+test("parseAiDetection maps xcam flags to enabled state", async () => {
+  const { BambuImplementation } = await importBambu();
+  const impl = new BambuImplementation(null);
+
+  const data = {
+    xcam: {
+      spaghetti_detector: true,
+      nozzle_clumping_detector: false,
+      purgechutepileup_detector: true,
+      first_layer_inspector: true,
+    },
+  };
+
+  const result = impl.parseAiDetectionForTests(data);
+  assert.ok(result);
+  assert.equal(result.spaghetti.enabled, true);
+  assert.equal(result.spaghetti.triggered, false);
+  assert.equal(result.nozzle_clumping.enabled, false);
+  assert.equal(result.purge_chute_jam.enabled, true);
+  assert.equal(result.start_check.enabled, true);
+});
+
+test("parseAiDetection marks triggered when xcam_status reports an alert", async () => {
+  const { BambuImplementation } = await importBambu();
+  const impl = new BambuImplementation(null);
+
+  const data = {
+    xcam: { spaghetti_detector: true },
+    xcam_status: {
+      spaghetti_triggered: true,
+      spaghetti_triggered_at: "2026-05-08T10:15:00Z",
+    },
+  };
+
+  const result = impl.parseAiDetectionForTests(data);
+  assert.equal(result.spaghetti.enabled, true);
+  assert.equal(result.spaghetti.triggered, true);
+  assert.equal(result.spaghetti.last_triggered_at, "2026-05-08T10:15:00Z");
+});

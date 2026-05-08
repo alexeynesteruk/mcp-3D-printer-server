@@ -52,6 +52,19 @@ interface Ams2ProStatus {
   units: Ams2ProUnit[];
 }
 
+interface AiDetectionCategory {
+  enabled: boolean;
+  triggered: boolean;
+  last_triggered_at?: string;
+}
+
+interface AiDetectionStatus {
+  spaghetti?: AiDetectionCategory;
+  nozzle_clumping?: AiDetectionCategory;
+  purge_chute_jam?: AiDetectionCategory;
+  start_check?: AiDetectionCategory;
+}
+
 class BambuClientStore {
   private printers: Map<string, BambuClient> = new Map();
   private initialConnectionPromises: Map<string, Promise<void>> = new Map();
@@ -252,6 +265,54 @@ export class BambuImplementation extends PrinterImplementation {
       return Math.round((1 - clamped / 5) * 100);
     }
     return undefined;
+  }
+
+  private parseAiDetection(data: any): AiDetectionStatus | null {
+    const xcam = data?.xcam;
+    const xcamStatus = data?.xcam_status;
+    if ((!xcam || typeof xcam !== "object") && (!xcamStatus || typeof xcamStatus !== "object")) {
+      return null;
+    }
+
+    // Map of public key -> enabled flag name (xcam) -> triggered flag / ts name (xcam_status)
+    const spec: Array<[
+      keyof AiDetectionStatus,
+      string,
+      string,
+      string,
+    ]> = [
+      ["spaghetti",       "spaghetti_detector",             "spaghetti_triggered",       "spaghetti_triggered_at"],
+      ["nozzle_clumping", "nozzle_clumping_detector",       "nozzle_clumping_triggered", "nozzle_clumping_triggered_at"],
+      ["purge_chute_jam", "purgechutepileup_detector",      "purge_chute_jam_triggered", "purge_chute_jam_triggered_at"],
+      ["start_check",     "first_layer_inspector",          "start_check_triggered",     "start_check_triggered_at"],
+    ];
+
+    const out: AiDetectionStatus = {};
+    let populated = false;
+
+    for (const [key, enabledField, triggeredField, triggeredAtField] of spec) {
+      const enabledRaw = xcam?.[enabledField];
+      const triggeredRaw = xcamStatus?.[triggeredField];
+      const triggeredAtRaw = xcamStatus?.[triggeredAtField];
+
+      if (enabledRaw === undefined && triggeredRaw === undefined) continue;
+
+      const cat: AiDetectionCategory = {
+        enabled: Boolean(enabledRaw),
+        triggered: Boolean(triggeredRaw),
+      };
+      if (typeof triggeredAtRaw === "string" && triggeredAtRaw.length > 0) {
+        cat.last_triggered_at = triggeredAtRaw;
+      }
+      out[key] = cat;
+      populated = true;
+    }
+
+    return populated ? out : null;
+  }
+
+  parseAiDetectionForTests(data: any): AiDetectionStatus | null {
+    return this.parseAiDetection(data);
   }
 
   // Test hook. Keeps the parser accessible from Node --test without exporting
