@@ -7,6 +7,22 @@ export type BambuFTP = {
   removeFile: (path: string) => Promise<void>;
 };
 
+export interface PrinterFileEntry {
+  name: string;
+  path?: string;
+  size?: number;
+  date?: number;            // unix epoch seconds (integer)
+  type?: "file" | "folder"; // defaults to "file"
+  origin?: string;          // optional storage hint
+}
+
+export interface PrinterFilesResult {
+  files: PrinterFileEntry[];
+  total: number;
+  truncated: boolean;
+  raw?: any;
+}
+
 // Base class for printer implementations
 export abstract class PrinterImplementation {
   protected apiClient: AxiosInstance;
@@ -16,7 +32,7 @@ export abstract class PrinterImplementation {
   }
 
   abstract getStatus(host: string, port: string, apiKey: string): Promise<any>;
-  abstract getFiles(host: string, port: string, apiKey: string): Promise<any>;
+  abstract getFiles(host: string, port: string, apiKey: string): Promise<PrinterFilesResult>;
   abstract getFile(host: string, port: string, apiKey: string, filename: string): Promise<any>;
   abstract uploadFile(host: string, port: string, apiKey: string, filePath: string, filename: string, print: boolean): Promise<any>;
   abstract startJob(host: string, port: string, apiKey: string, filename: string): Promise<any>;
