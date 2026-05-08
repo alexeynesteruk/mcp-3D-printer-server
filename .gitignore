@@ -55,3 +55,4 @@ yarn-error.log*
 # Test files and directories
 # test/ # Removed this line
 coverage/
+.gstack/
