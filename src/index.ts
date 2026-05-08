@@ -208,7 +208,7 @@ class ThreeDPrinterMCPServer {
       return validateBambuModel(fromArgs);
     }
 
-    // No model from args or env — ask the user via elicitation
+    // No model from args or env - ask the user via elicitation
     try {
       const result = await this.server.elicitInput({
         mode: "form" as const,
@@ -393,6 +393,198 @@ class ThreeDPrinterMCPServer {
               }
             }
           },
+          {
+            name: "list_printer_files",
+            description: "List files available on the 3D printer",
+            inputSchema: {
+              type: "object",
+              properties: {
+                host: {
+                  type: "string",
+                  description: "Hostname or IP address of the printer (default: value from env)"
+                },
+                port: {
+                  type: "string",
+                  description: "Port of the printer API (default: value from env)"
+                },
+                type: {
+                  type: "string",
+                  description: "Type of printer management system (octoprint, klipper, duet, repetier, bambu, prusa, creality) (default: value from env)"
+                },
+                api_key: {
+                  type: "string",
+                  description: "API key for authentication (default: value from env)"
+                },
+                bambu_serial: {
+                  type: "string",
+                  description: "Serial number for Bambu Lab printers (default: value from env)"
+                },
+                bambu_token: {
+                  type: "string",
+                  description: "Access token for Bambu Lab printers (default: value from env)"
+                }
+              }
+            }
+          },
+          {
+            name: "upload_gcode",
+            description: "Upload G-code content to the printer",
+            inputSchema: {
+              type: "object",
+              properties: {
+                host: {
+                  type: "string",
+                  description: "Hostname or IP address of the printer (default: value from env)"
+                },
+                port: {
+                  type: "string",
+                  description: "Port of the printer API (default: value from env)"
+                },
+                type: {
+                  type: "string",
+                  description: "Type of printer management system (octoprint, klipper, duet, repetier, bambu, prusa, creality) (default: value from env)"
+                },
+                api_key: {
+                  type: "string",
+                  description: "API key for authentication (default: value from env)"
+                },
+                bambu_serial: {
+                  type: "string",
+                  description: "Serial number for Bambu Lab printers (default: value from env)"
+                },
+                bambu_token: {
+                  type: "string",
+                  description: "Access token for Bambu Lab printers (default: value from env)"
+                },
+                filename: {
+                  type: "string",
+                  description: "Target filename on the printer (e.g. \"job.gcode\" or a path under cache/)"
+                },
+                gcode: {
+                  type: "string",
+                  description: "G-code content to upload"
+                },
+                print: {
+                  type: "boolean",
+                  description: "Start printing immediately after upload (default: false)"
+                }
+              },
+              required: ["filename", "gcode"]
+            }
+          },
+          {
+            name: "start_print",
+            description: "Start printing a file already on the printer",
+            inputSchema: {
+              type: "object",
+              properties: {
+                host: {
+                  type: "string",
+                  description: "Hostname or IP address of the printer (default: value from env)"
+                },
+                port: {
+                  type: "string",
+                  description: "Port of the printer API (default: value from env)"
+                },
+                type: {
+                  type: "string",
+                  description: "Type of printer management system (octoprint, klipper, duet, repetier, bambu, prusa, creality) (default: value from env)"
+                },
+                api_key: {
+                  type: "string",
+                  description: "API key for authentication (default: value from env)"
+                },
+                bambu_serial: {
+                  type: "string",
+                  description: "Serial number for Bambu Lab printers (default: value from env)"
+                },
+                bambu_token: {
+                  type: "string",
+                  description: "Access token for Bambu Lab printers (default: value from env)"
+                },
+                filename: {
+                  type: "string",
+                  description: "Filename on the printer to start printing (must already be uploaded)"
+                }
+              },
+              required: ["filename"]
+            }
+          },
+          {
+            name: "cancel_print",
+            description: "Cancel the current print job on the 3D printer",
+            inputSchema: {
+              type: "object",
+              properties: {
+                host: {
+                  type: "string",
+                  description: "Hostname or IP address of the printer (default: value from env)"
+                },
+                port: {
+                  type: "string",
+                  description: "Port of the printer API (default: value from env)"
+                },
+                type: {
+                  type: "string",
+                  description: "Type of printer management system (octoprint, klipper, duet, repetier, bambu, prusa, creality) (default: value from env)"
+                },
+                api_key: {
+                  type: "string",
+                  description: "API key for authentication (default: value from env)"
+                },
+                bambu_serial: {
+                  type: "string",
+                  description: "Serial number for Bambu Lab printers (default: value from env)"
+                },
+                bambu_token: {
+                  type: "string",
+                  description: "Access token for Bambu Lab printers (default: value from env)"
+                }
+              }
+            }
+          },
+          {
+            name: "set_printer_temperature",
+            description: "Set the target temperature for a printer component",
+            inputSchema: {
+              type: "object",
+              properties: {
+                host: {
+                  type: "string",
+                  description: "Hostname or IP address of the printer (default: value from env)"
+                },
+                port: {
+                  type: "string",
+                  description: "Port of the printer API (default: value from env)"
+                },
+                type: {
+                  type: "string",
+                  description: "Type of printer management system (octoprint, klipper, duet, repetier, bambu, prusa, creality) (default: value from env)"
+                },
+                api_key: {
+                  type: "string",
+                  description: "API key for authentication (default: value from env)"
+                },
+                bambu_serial: {
+                  type: "string",
+                  description: "Serial number for Bambu Lab printers (default: value from env)"
+                },
+                bambu_token: {
+                  type: "string",
+                  description: "Access token for Bambu Lab printers (default: value from env)"
+                },
+                component: {
+                  type: "string",
+                  description: "Component to heat: bed, nozzle, extruder, tool0"
+                },
+                temperature: {
+                  type: "number",
+                  description: "Target temperature in degrees Celsius"
+                }
+              },
+              required: ["component", "temperature"]
+            }
+          },
           // New STL manipulation tools
           {
             name: "extend_stl_base",
@@ -424,8 +616,8 @@ class ThreeDPrinterMCPServer {
                 },
                 bambu_model: {
                   type: "string",
-                  enum: ["p1s", "p1p", "x1c", "x1e", "a1", "a1mini", "h2d"],
-                  description: "Bambu Lab printer model — required when using bambustudio slicer to ensure correct G-code."
+                  enum: ["p1s", "p1p", "p2s", "x1c", "x1e", "a1", "a1mini", "h2d"],
+                  description: "Bambu Lab printer model - required when using bambustudio slicer to ensure correct G-code."
                 },
                 nozzle_diameter: {
                   type: "string",
@@ -703,7 +895,7 @@ class ThreeDPrinterMCPServer {
                 bambu_model: {
                   type: "string",
                   enum: ["p1s", "p1p", "x1c", "x1e", "a1", "a1mini", "h2d"],
-                  description: "REQUIRED: Bambu Lab printer model. Ensures correct G-code generation — wrong model can crash the bed into the nozzle."
+                  description: "REQUIRED: Bambu Lab printer model. Ensures correct G-code generation - wrong model can crash the bed into the nozzle."
                 },
                 bed_type: {
                   type: "string",
@@ -1206,7 +1398,7 @@ class ThreeDPrinterMCPServer {
                 f => f.match(/Metadata\/plate_\d+\.gcode/i) || f.endsWith('.gcode')
               );
               if (!hasGcode) {
-                console.log(`3MF has no gcode — auto-slicing with ${slicerType} for ${printModel}`);
+                console.log(`3MF has no gcode - auto-slicing with ${slicerType} for ${printModel}`);
                 threeMFPath = await this.stlManipulator.sliceSTL(
                   threeMFPath,
                   slicerType,
