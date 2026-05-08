@@ -47,7 +47,7 @@ const DEFAULT_BAMBU_MODEL = process.env.BAMBU_MODEL?.trim().toLowerCase() || "";
 const DEFAULT_BED_TYPE = process.env.BED_TYPE?.trim().toLowerCase() || "textured_plate";
 const DEFAULT_NOZZLE_DIAMETER = process.env.NOZZLE_DIAMETER?.trim() || "0.4";
 
-const VALID_BAMBU_MODELS = ["p1s", "p1p", "x1c", "x1e", "a1", "a1mini", "h2d"] as const;
+const VALID_BAMBU_MODELS = ["p1s", "p1p", "p2s", "x1c", "x1e", "a1", "a1mini", "h2d"] as const;
 type BambuModel = typeof VALID_BAMBU_MODELS[number];
 
 const VALID_BED_TYPES = ["textured_plate", "cool_plate", "engineering_plate", "hot_plate"] as const;
@@ -56,6 +56,7 @@ const VALID_BED_TYPES = ["textured_plate", "cool_plate", "engineering_plate", "h
 const BAMBU_MODEL_PRESETS: Record<string, (nozzle: string) => string> = {
   p1s: (n) => `Bambu Lab P1S ${n} nozzle`,
   p1p: (n) => `Bambu Lab P1P ${n} nozzle`,
+  p2s: (n) => `Bambu Lab P2S ${n} nozzle`,
   x1c: (n) => `Bambu Lab X1 Carbon ${n} nozzle`,
   x1e: (n) => `Bambu Lab X1E ${n} nozzle`,
   a1: (n) => `Bambu Lab A1 ${n} nozzle`,
@@ -224,6 +225,7 @@ class ThreeDPrinterMCPServer {
               oneOf: [
                 { const: "p1s", title: "P1S" },
                 { const: "p1p", title: "P1P" },
+                { const: "p2s", title: "P2S" },
                 { const: "x1c", title: "X1 Carbon" },
                 { const: "x1e", title: "X1E" },
                 { const: "a1", title: "A1" },
