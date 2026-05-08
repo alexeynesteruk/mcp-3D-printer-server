@@ -34,6 +34,24 @@ interface ProjectFileMetadata {
   md5: string;
 }
 
+interface Ams2ProSlotStatus {
+  slot: number;
+  humidity_pct?: number;
+  target_humidity_pct?: number;
+  drying_active?: boolean;
+  dry_time_remaining_min?: number;
+  drying_temp_c?: number;
+}
+
+interface Ams2ProUnit {
+  id: number;
+  slots: Ams2ProSlotStatus[];
+}
+
+interface Ams2ProStatus {
+  units: Ams2ProUnit[];
+}
+
 class BambuClientStore {
   private printers: Map<string, BambuClient> = new Map();
   private initialConnectionPromises: Map<string, Promise<void>> = new Map();
