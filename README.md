@@ -742,8 +742,8 @@ For printers that report them (P2S and newer firmware on P1S / X1 / H2D),
             "humidity_pct": 22,
             "target_humidity_pct": 15,
             "drying_active": true,
-            "drying_temp_c": 55,
-            "dry_time_remaining_min": 90
+            "dry_time_remaining_min": 90,
+            "drying_temp_c": 55
           }
         ]
       }
