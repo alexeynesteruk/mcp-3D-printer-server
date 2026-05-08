@@ -174,6 +174,38 @@ if (!fs.existsSync(TEMP_DIR)) {
   fs.mkdirSync(TEMP_DIR, { recursive: true });
 }
 
+// Pure projection helper - exported for unit testing
+export function projectFilesResult(result: PrinterFilesResult, args: any): PrinterFilesResult {
+  const rawRequested = Boolean(args?.raw);
+  const rawLimit = typeof args?.limit === "number" ? args.limit : 50;
+  const limit = rawLimit === 0 ? Infinity : Math.max(0, Math.min(500, rawLimit));
+  const allowedFields = ["name", "path", "size", "date", "type", "origin"] as const;
+  const defaultFields: string[] = ["name", "size", "date"];
+  const requested: string[] = Array.isArray(args?.fields) ? args.fields : defaultFields;
+  const fields = requested.filter((f) => (allowedFields as readonly string[]).includes(f));
+
+  const all = result.files;
+  const truncated = all.length > limit;
+  const sliced = Number.isFinite(limit) ? all.slice(0, limit) : all;
+
+  const projected: PrinterFileEntry[] = sliced.map((entry) => {
+    const out: any = {};
+    for (const f of fields) {
+      const value = (entry as any)[f];
+      if (value !== undefined) out[f] = value;
+    }
+    return out;
+  });
+
+  const response: PrinterFilesResult = {
+    files: projected,
+    total: all.length,
+    truncated,
+  };
+  if (rawRequested) response.raw = result.raw;
+  return response;
+}
+
 class ThreeDPrinterMCPServer {
   private server: Server;
   private printerFactory: PrinterFactory;
@@ -1640,34 +1672,7 @@ class ThreeDPrinterMCPServer {
   }
 
   private projectFilesResult(result: PrinterFilesResult, args: any): PrinterFilesResult {
-    const rawRequested = Boolean(args?.raw);
-    const rawLimit = typeof args?.limit === "number" ? args.limit : 50;
-    const limit = rawLimit === 0 ? Infinity : Math.max(0, Math.min(500, rawLimit));
-    const allowedFields = ["name", "path", "size", "date", "type", "origin"] as const;
-    const defaultFields: string[] = ["name", "size", "date"];
-    const requested: string[] = Array.isArray(args?.fields) ? args.fields : defaultFields;
-    const fields = requested.filter((f) => (allowedFields as readonly string[]).includes(f));
-
-    const all = result.files;
-    const truncated = all.length > limit;
-    const sliced = Number.isFinite(limit) ? all.slice(0, limit) : all;
-
-    const projected: PrinterFileEntry[] = sliced.map((entry) => {
-      const out: any = {};
-      for (const f of fields) {
-        const value = (entry as any)[f];
-        if (value !== undefined) out[f] = value;
-      }
-      return out;
-    });
-
-    const response: PrinterFilesResult = {
-      files: projected,
-      total: all.length,
-      truncated,
-    };
-    if (rawRequested) response.raw = result.raw;
-    return response;
+    return projectFilesResult(result, args);
   }
 
   async getPrinterFile(
@@ -2019,22 +2024,30 @@ class ThreeDPrinterMCPServer {
   }
 }
 
-const server = new ThreeDPrinterMCPServer();
+// Only start the server when this file is the entry point, not when imported as a module.
+// This allows test files to import exported helpers (e.g. projectFilesResult) without
+// spinning up the stdio/HTTP transport.
+import { fileURLToPath as _fileURLToPath } from "node:url";
+const _isMain = process.argv[1] === _fileURLToPath(import.meta.url);
 
-const shutdown = async () => {
-  await server.close();
-  process.exit(0);
-};
+if (_isMain) {
+  const server = new ThreeDPrinterMCPServer();
 
-process.once("SIGINT", () => {
-  void shutdown();
-});
+  const shutdown = async () => {
+    await server.close();
+    process.exit(0);
+  };
 
-process.once("SIGTERM", () => {
-  void shutdown();
-});
+  process.once("SIGINT", () => {
+    void shutdown();
+  });
 
-server.run().catch((error) => {
-  console.error("[mcp-3d-printer-server] startup failed:", error);
-  process.exit(1);
-});
+  process.once("SIGTERM", () => {
+    void shutdown();
+  });
+
+  server.run().catch((error) => {
+    console.error("[mcp-3d-printer-server] startup failed:", error);
+    process.exit(1);
+  });
+}
