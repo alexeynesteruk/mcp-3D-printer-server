@@ -575,7 +575,7 @@ class ThreeDPrinterMCPServer {
                 },
                 component: {
                   type: "string",
-                  description: "Component to heat: bed, nozzle, extruder, tool0"
+                  description: "Component to heat: bed, nozzle, extruder, tool, tool0"
                 },
                 temperature: {
                   type: "number",
@@ -894,7 +894,7 @@ class ThreeDPrinterMCPServer {
                 },
                 bambu_model: {
                   type: "string",
-                  enum: ["p1s", "p1p", "x1c", "x1e", "a1", "a1mini", "h2d"],
+                  enum: ["p1s", "p1p", "p2s", "x1c", "x1e", "a1", "a1mini", "h2d"],
                   description: "REQUIRED: Bambu Lab printer model. Ensures correct G-code generation - wrong model can crash the bed into the nozzle."
                 },
                 bed_type: {

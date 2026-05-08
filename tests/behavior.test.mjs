@@ -205,7 +205,7 @@ test("bambu defaults: bambustudio slicer type and auto-slice on unsliced 3MF", a
   );
   assert.deepEqual(
     print3mfTool.inputSchema.properties.bambu_model.enum,
-    ["p1s", "p1p", "x1c", "x1e", "a1", "a1mini", "h2d"],
+    ["p1s", "p1p", "p2s", "x1c", "x1e", "a1", "a1mini", "h2d"],
     "bambu_model enum must list all valid models"
   );
 });

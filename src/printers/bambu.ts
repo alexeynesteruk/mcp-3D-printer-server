@@ -491,7 +491,7 @@ export class BambuImplementation extends PrinterImplementation {
       gcode = `M104 S${targetTemperature}`;
     } else {
       throw new Error(
-        `Unsupported temperature component: ${component}. Use one of: bed, nozzle, extruder.`
+        `Unsupported temperature component: ${component}. Use one of: bed, nozzle, extruder, tool, tool0.`
       );
     }
 
