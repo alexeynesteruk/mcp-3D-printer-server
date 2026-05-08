@@ -22,6 +22,7 @@ import { PrinterFactory } from "./printers/printer-factory.js";
 import { STLManipulator } from "./stl/stl-manipulator.js";
 import { parse3MF, ThreeMFData } from './3mf_parser.js';
 import { BambuImplementation } from "./printers/bambu.js";
+import { PrinterFileEntry, PrinterFilesResult } from "./types.js";
 
 // Load environment variables from .env file
 dotenv.config();
@@ -422,6 +423,19 @@ class ThreeDPrinterMCPServer {
                 bambu_token: {
                   type: "string",
                   description: "Access token for Bambu Lab printers (default: value from env)"
+                },
+                limit: {
+                  type: "number",
+                  description: "Maximum number of files to return (default: 50, max: 500). Pass 0 for unlimited."
+                },
+                fields: {
+                  type: "array",
+                  items: { type: "string", enum: ["name", "path", "size", "date", "type", "origin"] },
+                  description: "Which fields to include per entry. Default: [\"name\",\"size\",\"date\"]."
+                },
+                raw: {
+                  type: "boolean",
+                  description: "If true, include the printer's raw response under `raw`. Default false. Can be very large; use for debugging only."
                 }
               }
             }
@@ -1031,9 +1045,11 @@ class ThreeDPrinterMCPServer {
             result = await this.getPrinterStatus(host, port, type, apiKey, bambuSerial, bambuToken);
             break;
             
-          case "list_printer_files":
-            result = await this.getPrinterFiles(host, port, type, apiKey, bambuSerial, bambuToken);
+          case "list_printer_files": {
+            const filesResult = await this.getPrinterFiles(host, port, type, apiKey, bambuSerial, bambuToken);
+            result = this.projectFilesResult(filesResult, args);
             break;
+          }
             
           case "upload_gcode":
             if (!args?.filename || !args?.gcode) {
@@ -1623,11 +1639,42 @@ class ThreeDPrinterMCPServer {
     return implementation.getFiles(host, port, apiKey);
   }
 
+  private projectFilesResult(result: PrinterFilesResult, args: any): PrinterFilesResult {
+    const rawRequested = Boolean(args?.raw);
+    const rawLimit = typeof args?.limit === "number" ? args.limit : 50;
+    const limit = rawLimit === 0 ? Infinity : Math.max(0, Math.min(500, rawLimit));
+    const allowedFields = ["name", "path", "size", "date", "type", "origin"] as const;
+    const defaultFields: string[] = ["name", "size", "date"];
+    const requested: string[] = Array.isArray(args?.fields) ? args.fields : defaultFields;
+    const fields = requested.filter((f) => (allowedFields as readonly string[]).includes(f));
+
+    const all = result.files;
+    const truncated = all.length > limit;
+    const sliced = Number.isFinite(limit) ? all.slice(0, limit) : all;
+
+    const projected: PrinterFileEntry[] = sliced.map((entry) => {
+      const out: any = {};
+      for (const f of fields) {
+        const value = (entry as any)[f];
+        if (value !== undefined) out[f] = value;
+      }
+      return out;
+    });
+
+    const response: PrinterFilesResult = {
+      files: projected,
+      total: all.length,
+      truncated,
+    };
+    if (rawRequested) response.raw = result.raw;
+    return response;
+  }
+
   async getPrinterFile(
-    host: string, 
-    filename: string, 
-    port = DEFAULT_PORT, 
-    type = DEFAULT_TYPE, 
+    host: string,
+    filename: string,
+    port = DEFAULT_PORT,
+    type = DEFAULT_TYPE,
     apiKey = DEFAULT_API_KEY,
     bambuSerial = DEFAULT_BAMBU_SERIAL,
     bambuToken = DEFAULT_BAMBU_TOKEN
