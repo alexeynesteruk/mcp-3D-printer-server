@@ -182,6 +182,84 @@ export class BambuImplementation extends PrinterImplementation {
     };
   }
 
+  private parseAms2Pro(data: any): Ams2ProStatus | null {
+    const amsRoot = data?.ams;
+    const units = amsRoot?.ams;
+    if (!Array.isArray(units) || units.length === 0) {
+      return null;
+    }
+
+    const parsedUnits: Ams2ProUnit[] = [];
+
+    for (const unit of units) {
+      if (!unit || typeof unit !== "object") continue;
+      const unitId = typeof unit.id === "number" ? unit.id : parseInt(String(unit.id ?? 0), 10) || 0;
+
+      const unitHumidityPct = this.resolveHumidityPct(unit);
+      const trays = Array.isArray(unit.tray) ? unit.tray : [];
+
+      const slots: Ams2ProSlotStatus[] = trays.map((tray: any, index: number) => {
+        const slotIndex = typeof tray?.id === "number" ? tray.id : parseInt(String(tray?.id ?? index), 10);
+        const slot: Ams2ProSlotStatus = {
+          slot: Number.isFinite(slotIndex) ? slotIndex : index,
+        };
+
+        const slotHumidity = this.resolveHumidityPct(tray);
+        if (slotHumidity !== undefined) {
+          slot.humidity_pct = slotHumidity;
+        } else if (unitHumidityPct !== undefined) {
+          slot.humidity_pct = unitHumidityPct;
+        }
+
+        if (typeof tray?.target_humidity === "number") {
+          slot.target_humidity_pct = tray.target_humidity;
+        }
+        if (typeof tray?.drying === "boolean") {
+          slot.drying_active = tray.drying;
+        } else if (typeof tray?.dry_state === "string") {
+          slot.drying_active = tray.dry_state.toLowerCase() === "drying";
+        }
+        if (typeof tray?.dry_temp === "number") {
+          slot.drying_temp_c = tray.dry_temp;
+        }
+        if (typeof tray?.dry_time === "number") {
+          slot.dry_time_remaining_min = tray.dry_time;
+        }
+
+        return slot;
+      });
+
+      if (slots.length === 0) continue;
+      parsedUnits.push({ id: unitId, slots });
+    }
+
+    return parsedUnits.length > 0 ? { units: parsedUnits } : null;
+  }
+
+  /**
+   * Bambu firmware uses two encodings for humidity:
+   *   - legacy `humidity`: integer 0-5 (0 = bone dry, 5 = wet). Approximate to %.
+   *   - newer `humidity_pct` / `humidity_raw`: already percent (0-100).
+   * Prefer the percent form when present.
+   */
+  private resolveHumidityPct(source: any): number | undefined {
+    if (!source || typeof source !== "object") return undefined;
+    if (typeof source.humidity_pct === "number") return source.humidity_pct;
+    if (typeof source.humidity_raw === "number") return source.humidity_raw;
+    if (typeof source.humidity === "number") {
+      // 0..5 scale -> 0..100% approx
+      const clamped = Math.max(0, Math.min(5, source.humidity));
+      return Math.round((1 - clamped / 5) * 100);
+    }
+    return undefined;
+  }
+
+  // Test hook. Keeps the parser accessible from Node --test without exporting
+  // the whole private surface. Safe no-op for production callers.
+  parseAms2ProForTests(data: any): Ams2ProStatus | null {
+    return this.parseAms2Pro(data);
+  }
+
   async getStatus(host: string, port: string, apiKey: string): Promise<any> {
     const [serial, token] = this.extractBambuCredentials(apiKey);
 
