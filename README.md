@@ -769,6 +769,59 @@ Both fields are additive. Existing `temperatures`, `print`, `ams`, `model`,
 </details>
 
 <details open>
+<summary><strong>list_printer_files - Token Budget Controls</strong></summary>
+
+### Normalized Response Shape
+
+`list_printer_files` returns a portable shape across all supported adapters
+(OctoPrint, Klipper, Duet, Repetier, Bambu, Prusa, Creality):
+
+```json
+{
+  "files": [
+    { "name": "benchy.gcode", "size": 1234567, "date": 1700000000 }
+  ],
+  "total": 1,
+  "truncated": false
+}
+```
+
+Each entry is a `PrinterFileEntry`:
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `name` | string | Filename (basename only). Always present. |
+| `path` | string | Full path within printer storage, if the adapter reports it. |
+| `size` | number | Bytes, if reported. |
+| `date` | number | Modification time, unix epoch seconds. Normalized across ISO 8601, fractional epoch, and integer epoch inputs. |
+| `type` | `"file" \| "folder"` | Defaults to `"file"`. |
+| `origin` | string | Optional storage hint (e.g. `"local"`, `"cache"`, `"gcodes"`). |
+
+### Parameters
+
+| Name | Type | Default | Notes |
+|------|------|---------|-------|
+| `limit` | number | `50` | Max entries returned. Clamped to `[0, 500]`. Pass `0` for unlimited. |
+| `fields` | array | `["name","size","date"]` | Which fields to include per entry. Unknown field names are silently dropped. |
+| `raw` | boolean | `false` | If `true`, the response also includes a `raw` key with the adapter's original response. Use for debugging only, can be very large. |
+
+### Why this exists
+
+Upstream issue [#4](https://github.com/DMontgomery40/mcp-3D-printer-server/issues/4)
+reported a 324-file OctoPrint response consuming ~200k tokens in a 64k
+context window. The default limit of 50 plus field projection reduces a
+typical listing to well under 2k tokens; `raw: true` keeps the previous
+behavior available when needed.
+
+### Migration note
+
+Callers that previously depended on the adapter's native shape should
+either switch to the new normalized fields or pass `raw: true` to receive
+the original payload under `raw`.
+
+</details>
+
+<details open>
 <summary>Click to expand Bambu Preset Resources</summary>
 
 ### Bambu Preset Resources
