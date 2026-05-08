@@ -211,7 +211,7 @@ TEMP_DIR=/path/to/temp/dir
 # Bambu Labs specific configuration
 BAMBU_SERIAL=your_printer_serial # REQUIRED for Bambu
 BAMBU_TOKEN=your_access_token    # REQUIRED for Bambu
-BAMBU_MODEL=p1s                  # REQUIRED for Bambu: p1s, p1p, x1c, x1e, a1, a1mini, h2d
+BAMBU_MODEL=p1s                  # REQUIRED for Bambu: p1s, p1p, p2s, x1c, x1e, a1, a1mini, h2d
 BED_TYPE=textured_plate          # Bed plate: textured_plate, cool_plate, engineering_plate, hot_plate
 NOZZLE_DIAMETER=0.4              # Nozzle diameter in mm (default: 0.4)
 
@@ -324,7 +324,7 @@ Repetier-Server is a host software for 3D printers.
 Bambu Lab printers use MQTT for status and control and FTP for file operations.
 
 - Authentication: Serial number and access token required (set `BAMBU_SERIAL` and `BAMBU_TOKEN`)
-- Printer model: **Required** (set `BAMBU_MODEL`). Valid values: `p1s`, `p1p`, `x1c`, `x1e`, `a1`, `a1mini`, `h2d`. This ensures the slicer generates correct G-code for your specific printer.
+- Printer model: **Required** (set `BAMBU_MODEL`). Valid values: `p1s`, `p1p`, `p2s`, `x1c`, `x1e`, `a1`, `a1mini`, `h2d`. This ensures the slicer generates correct G-code for your specific printer.
 - Requirements: Printer must be on the same network with Developer Mode and LAN Only Mode enabled
 - Compatible with: X1C, X1E, P1S, P1P, A1, A1 Mini, H2D
 
@@ -718,6 +718,53 @@ Uploads a `.3mf` file to a Bambu printer via FTP and initiates the print job via
 - `printer://{host}/status` - Current status of the 3D printer (limited for Bambu currently)
 - `printer://{host}/files` - List of files available on the 3D printer (FTP for Bambu)
 - `printer://{host}/file/{filename}` - Content of a specific G-code file (checks existence only for Bambu)
+
+</details>
+
+<details>
+<summary>Click to expand Extended Bambu Status Fields</summary>
+
+#### Extended Bambu Status Fields
+
+For printers that report them (P2S and newer firmware on P1S / X1 / H2D),
+`getStatus` includes two additional blocks:
+
+- `ams_2_pro`: `null` when no AMS 2 Pro-style data is present. When populated:
+
+  ```json
+  {
+    "units": [
+      {
+        "id": 0,
+        "slots": [
+          {
+            "slot": 0,
+            "humidity_pct": 22,
+            "target_humidity_pct": 15,
+            "drying_active": true,
+            "drying_temp_c": 55,
+            "dry_time_remaining_min": 90
+          }
+        ]
+      }
+    ]
+  }
+  ```
+
+- `ai_detection`: `null` when the printer does not expose xcam state.
+  When populated, keys `spaghetti`, `nozzle_clumping`, `purge_chute_jam`,
+  `start_check` each report:
+
+  ```json
+  {
+    "enabled": true,
+    "triggered": false,
+    "last_triggered_at": "2026-05-08T12:00:00Z"
+  }
+  ```
+
+Both fields are additive. Existing `temperatures`, `print`, `ams`, `model`,
+`serial`, and `raw` remain unchanged.
 
 </details>
 
